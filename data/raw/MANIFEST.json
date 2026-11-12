@@ -1,0 +1,60 @@
+{
+ "files": {
+  "epochs.csv": {
+   "rows": 1642,
+   "sha256": "1f8f28900a3b0506848f4a677363261857f4764b8f31f69cc2298f8a7b7437d9",
+   "url": "NEAR mainnet block headers: archival JSON-RPC and neardata.xyz (ledger/rpc.py)"
+  },
+  "llama_chain_fees.csv": {
+   "rows": 2220,
+   "sha256": "0e12256cd85948694bd89ac0df9cd52fcaaeb1ebdcbf60cc22089391d1b29b20",
+   "url": "https://api.llama.fi/summary/fees/near?dataType=dailyFees"
+  },
+  "llama_intents_fees.csv": {
+   "rows": 551,
+   "sha256": "858a91fbc158dfefd90154a4ba393f614594b57aa9f3094b0f0f21e994eb6c76",
+   "url": "https://api.llama.fi/summary/fees/near-intents?dataType=dailyFees"
+  },
+  "llama_intents_holders_revenue.csv": {
+   "rows": 551,
+   "sha256": "aaf2af268c605b2f0d5c183761829df78bdd642019a0bb9ea78517780b5f04ab",
+   "url": "https://api.llama.fi/summary/fees/near-intents?dataType=dailyHoldersRevenue"
+  },
+  "llama_intents_revenue.csv": {
+   "rows": 551,
+   "sha256": "2250df76b36f54170adbebc442924a664fbce5c6ade6bfecc046ac23440f0e34",
+   "url": "https://api.llama.fi/summary/fees/near-intents?dataType=dailyRevenue"
+  },
+  "llama_intents_volume.csv": {
+   "rows": 702,
+   "sha256": "130bbe88de6e3eb8697a7c3edc7f5c28b9a4082c4bf417b31cbd1ecac900530d",
+   "url": "https://api.llama.fi/summary/dexs/near-intents?dataType=dailyVolume"
+  },
+  "llama_methodology.json": {
+   "rows": 5,
+   "sha256": "e370bcac93ed22d9afad9dd2afde82a77462f919d063234057cb7d683d43a15b",
+   "url": "methodology fields of the DefiLlama responses above"
+  },
+  "llama_stablecoins.csv": {
+   "rows": 1587,
+   "sha256": "74cb6233fbdd1c29af518b713bcbb95dd6aa48aa74a716f391818f6a2f17c8f2",
+   "url": "https://stablecoins.llama.fi/stablecoincharts/Near"
+  },
+  "llama_tvl.csv": {
+   "rows": 1911,
+   "sha256": "905fd1839a1cb29780960c210dc788c268399a8549afa194bf68621cfd4ba3ac",
+   "url": "https://api.llama.fi/v2/historicalChainTvl/Near"
+  },
+  "nearblocks_daily.csv": {
+   "rows": 2305,
+   "sha256": "bf978ee4785667c1621b6a215a563d7631317ce71b9212de2aa7ca3c3ea930ff",
+   "url": "https://api.nearblocks.io/v1/charts"
+  },
+  "samples.csv": {
+   "rows": 72,
+   "sha256": "6a8bde3873d99b50366f9f1ce0dcb892b8458afbd3b95416b0b2004348411438",
+   "url": "validators RPC; ft_price on linear-protocol.near; get_st_near_price on meta-pool.near; view_account on the three revenue accounts"
+  }
+ },
+ "pulled_at": "2026-11-12T23:50:22Z"
+}

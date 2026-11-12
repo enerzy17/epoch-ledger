@@ -1,0 +1,51 @@
+{
+ "llama_chain_fees": {
+  "methodology": {
+   "Fees": "All transaction (gas) fees paid by users on the NEAR blockchain, fetched from Allium.",
+   "HoldersRevenue": "Burned gas fees (70%) accrue to all NEAR holders through reduced circulating supply.",
+   "Revenue": "70% of every gas fee is permanently burned, reducing NEAR supply. The other 30% is paid to contract developers, so only 70% is protocol revenue.",
+   "SupplySideRevenue": "The remaining 30% of each gas fee is rebated to the developer of the smart contract being called.",
+   "UserFees": "Gas fees paid by users"
+  },
+  "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/fees/near",
+  "url": "https://api.llama.fi/summary/fees/near?dataType=dailyFees"
+ },
+ "llama_intents_fees": {
+  "methodology": {
+   "Fees": "Gross fees charged on NEAR Intents swaps - the protocol fee plus the affiliate (distribution) fee each frontend collects, summed across all integrators.",
+   "HoldersRevenue": "Since 2026-02-23, NEAR's captured Intents revenue is used to buy back $NEAR on the open market (not burned), returning value to holders.",
+   "ProtocolRevenue": "Captured revenue held by the treasury before the 2026-02-23 buyback program.",
+   "Revenue": "NEAR's net captured revenue, measured as NEAR/wNEAR swept into its revenue wallets (reconciles with revenue.near.org and the on-chain buyback). Split by destination wallet into front-end affiliate revenue and Other. Transfers between those wallets are excluded.",
+   "SupplySideRevenue": "Gross fees minus NEAR's captured revenue - the affiliate fees kept by solvers and third-party distribution channels (e.g. SwapKit)."
+  },
+  "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/fees/near-intents",
+  "url": "https://api.llama.fi/summary/fees/near-intents?dataType=dailyFees"
+ },
+ "llama_intents_holders_revenue": {
+  "methodology": {
+   "Fees": "Gross fees charged on NEAR Intents swaps - the protocol fee plus the affiliate (distribution) fee each frontend collects, summed across all integrators.",
+   "HoldersRevenue": "Since 2026-02-23, NEAR's captured Intents revenue is used to buy back $NEAR on the open market (not burned), returning value to holders.",
+   "ProtocolRevenue": "Captured revenue held by the treasury before the 2026-02-23 buyback program.",
+   "Revenue": "NEAR's net captured revenue, measured as NEAR/wNEAR swept into its revenue wallets (reconciles with revenue.near.org and the on-chain buyback). Split by destination wallet into front-end affiliate revenue and Other. Transfers between those wallets are excluded.",
+   "SupplySideRevenue": "Gross fees minus NEAR's captured revenue - the affiliate fees kept by solvers and third-party distribution channels (e.g. SwapKit)."
+  },
+  "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/fees/near-intents",
+  "url": "https://api.llama.fi/summary/fees/near-intents?dataType=dailyHoldersRevenue"
+ },
+ "llama_intents_revenue": {
+  "methodology": {
+   "Fees": "Gross fees charged on NEAR Intents swaps - the protocol fee plus the affiliate (distribution) fee each frontend collects, summed across all integrators.",
+   "HoldersRevenue": "Since 2026-02-23, NEAR's captured Intents revenue is used to buy back $NEAR on the open market (not burned), returning value to holders.",
+   "ProtocolRevenue": "Captured revenue held by the treasury before the 2026-02-23 buyback program.",
+   "Revenue": "NEAR's net captured revenue, measured as NEAR/wNEAR swept into its revenue wallets (reconciles with revenue.near.org and the on-chain buyback). Split by destination wallet into front-end affiliate revenue and Other. Transfers between those wallets are excluded.",
+   "SupplySideRevenue": "Gross fees minus NEAR's captured revenue - the affiliate fees kept by solvers and third-party distribution channels (e.g. SwapKit)."
+  },
+  "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/fees/near-intents",
+  "url": "https://api.llama.fi/summary/fees/near-intents?dataType=dailyRevenue"
+ },
+ "llama_intents_volume": {
+  "methodology": {},
+  "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/dexs/near-intents",
+  "url": "https://api.llama.fi/summary/dexs/near-intents?dataType=dailyVolume"
+ }
+}

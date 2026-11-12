@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epoch Ledger: who pays for NEAR's security</title>
+<meta name="description" content="NEAR issuance, gas burn and Intents buyback measured from block headers. Every chart is rebuilt by one command.">
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --good:#006300; --bad:#b3261e; --wash:rgba(42,120,214,.10);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --good:#0ca30c; --bad:#e66767; --wash:rgba(57,135,229,.12);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --good:#0ca30c; --bad:#e66767; --wash:rgba(57,135,229,.12);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--ink);
+  font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:clamp(28px,5vw,44px);line-height:1.1;margin:0 0 12px;letter-spacing:-.02em}
+h2{font-size:22px;margin:48px 0 6px;letter-spacing:-.01em}
+h3{font-size:17px;margin:0 0 4px}
+p{margin:0 0 12px}
+a{color:inherit}
+code,pre{font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
+code{background:var(--wash);padding:1px 5px;border-radius:4px}
+pre{background:var(--page);border:1px solid var(--border);border-radius:8px;padding:12px;overflow-x:auto;margin:8px 0 0}
+.lede{font-size:19px;color:var(--ink2);max-width:780px}
+.meta{font-size:13px;color:var(--muted);margin-top:14px}
+.eyebrow{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:28px 0 0}
+@media (min-width:1080px){.tiles{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media (max-width:560px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.tile .label{font-size:13px;color:var(--ink2)}
+.tile .value{font-size:28px;font-weight:650;letter-spacing:-.02em;margin:2px 0;font-variant-numeric:tabular-nums}
+.tile .note{font-size:12px;color:var(--muted);line-height:1.35}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 18px 12px;margin:16px 0}
+.take{color:var(--ink2);margin:0 0 10px;max-width:760px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--ink2);margin:0 0 4px}
+.key{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.key.box{height:10px;border:0;border-radius:2px}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--muted);font-size:12px}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:130px;
+  display:none;z-index:2}
+.tip .d{color:var(--muted);margin-bottom:4px}
+.tip .row{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.tip .row b{font-variant-numeric:tabular-nums}
+.tip .nm{color:var(--ink2)}
+details{margin:8px 0 0;font-size:14px}
+summary{cursor:pointer;color:var(--ink2);padding:6px 0}
+.tablewrap{overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{position:sticky;top:0;background:var(--surface);color:var(--ink2);font-weight:600}
+td.num,th.num{text-align:right}
+.state{white-space:nowrap;font-weight:600}
+.state.ok{color:var(--good)} .state.no{color:var(--bad)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.model{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:760px){.model{grid-template-columns:1fr}}
+.ctl{margin:0 0 14px}
+.ctl label{display:flex;justify-content:space-between;font-size:14px;color:var(--ink2);gap:12px}
+.ctl output{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--s1);margin:6px 0 0}
+.out{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.out .tile .value{font-size:24px}
+.meter{height:10px;border-radius:5px;background:var(--wash);overflow:hidden;margin:12px 0 4px}
+.meter i{display:block;height:100%;background:var(--s1);border-radius:5px 0 0 5px}
+button.reset{font:inherit;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--ink);cursor:pointer}
+footer{margin-top:48px;font-size:13px;color:var(--muted)}
+</style>
+<script>
+// ?theme=dark or ?theme=light overrides the system setting (used for screenshots).
+(function(){var m=/[?&]theme=(dark|light)/.exec(location.search);if(m)document.documentElement.setAttribute("data-theme",m[1]);})();
+</script>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Epoch Ledger · NEAR HACKATHON · Investment Thesis</p>
+  <h1>Who pays for NEAR's security?</h1>
+  <p class="lede">Every epoch NEAR mints new tokens to pay validators. This page measures, from block headers, how much is minted, how much users burn in gas, and how much NEAR Intents revenue buys back. The long-term case for NEAR is that the last number catches the first.</p>
+  <p class="meta" id="meta"></p>
+
+  <div class="tiles" id="tiles"></div>
+
+  <h2>The ledger</h2>
+  <p class="take">Minted and burnt NEAR are read from <code>total_supply</code> in block headers at the first and last block of every epoch. USD figures use the NearBlocks daily price. Intents volume and revenue come from DefiLlama and are third-party data.</p>
+
+  <section class="card" id="c-cover"></section>
+  <section class="card" id="c-volume"></section>
+  <section class="card" id="c-issuance"></section>
+  <section class="card" id="c-staking"></section>
+  <div class="two">
+    <section class="card" id="c-txns"></section>
+    <section class="card" id="c-accounts"></section>
+  </div>
+
+  <h2>Run the model yourself</h2>
+  <p class="take">Same formulas as <code>ledger/model.py</code>. Issuance is fixed in NEAR and the buyback is fixed in dollars, so a higher NEAR price makes the gap harder to close.</p>
+  <section class="card">
+    <div class="model">
+      <div>
+        <div class="ctl"><label for="m-vol">Intents volume per day <output id="o-vol"></output></label>
+          <input type="range" id="m-vol" min="0" max="100" step="0.01"></div>
+        <div class="ctl"><label for="m-cap">Revenue captured, share of volume <output id="o-cap"></output></label>
+          <input type="range" id="m-cap" min="0" max="100" step="0.01"></div>
+        <div class="ctl"><label for="m-price">NEAR price <output id="o-price"></output></label>
+          <input type="range" id="m-price" min="0" max="100" step="0.01"></div>
+        <div class="ctl"><label for="m-rate">Issuance rate, annual <output id="o-rate"></output></label>
+          <input type="range" id="m-rate" min="0" max="100" step="0.01"></div>
+        <button class="reset" id="m-reset" type="button">Reset to measured values</button>
+      </div>
+      <div>
+        <div class="out">
+          <div class="tile"><div class="label">Issuance offset</div><div class="value" id="r-cover"></div>
+            <div class="note">burn plus buyback, share of issuance</div></div>
+          <div class="tile"><div class="label">Net dilution</div><div class="value" id="r-dil"></div>
+            <div class="note">annual supply growth holders bear</div></div>
+          <div class="tile"><div class="label">Break-even volume</div><div class="value" id="r-be"></div>
+            <div class="note">per day, at this price and capture</div></div>
+          <div class="tile"><div class="label">Years to break even</div><div class="value" id="r-yrs"></div>
+            <div class="note" id="r-yrs-note"></div></div>
+        </div>
+        <div class="meter" aria-hidden="true"><i id="r-bar"></i></div>
+        <div class="note" style="font-size:12px;color:var(--muted)">Bar: share of issuance offset, capped at 100%.</div>
+      </div>
+    </div>
+  </section>
+
+  <h2>Claims, checked on every run</h2>
+  <p class="take">Each sentence below is generated from the data and carries a test. <code>python run.py</code> exits with an error if any test fails.</p>
+  <div class="tablewrap" style="max-height:none"><table id="claims"></table></div>
+
+  <h2>What would change the view</h2>
+  <p class="take">These are the results that would retire the thesis. They are evaluated against the same data.</p>
+  <div class="tablewrap" style="max-height:none"><table id="kills"></table></div>
+
+  <h2>Sources and limits</h2>
+  <div class="tablewrap" style="max-height:none"><table id="sources"></table></div>
+  <p class="take" style="margin-top:12px">Limits: the buyback is taken from DefiLlama's reading of NEAR's revenue accounts. It is checked against the on-chain NEAR balance of those accounts (claim C15) but not re-derived trade by trade. Bought NEAR is held, not burnt, so it lowers float, not supply. Price, transactions and active accounts come from an indexer. Nothing on this page is investment advice.</p>
+
+  <footer>Built with standard-library Python. Rebuild everything with <code>python run.py</code>. Built at NEAR HACKATHON, November 2026. Code, thesis and raw data: <a href="https://github.com/enerzy17/epoch-ledger">github.com/enerzy17/epoch-ledger</a>.</footer>
+</main>
+
+<script id="payload" type="application/json">__PAYLOAD__</script>
+<script>
+(function(){
+"use strict";
+var D = JSON.parse(document.getElementById("payload").textContent);
+var NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent, text){
+  var n = tag.indexOf("svg:")===0 ? document.createElementNS(NS, tag.slice(4)) : document.createElement(tag);
+  for (var k in attrs||{}) n.setAttribute(k, attrs[k]);
+  if (text!=null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function fmtNum(v, unit){
+  if (v==null) return "n/a";
+  if (unit==="$M" && Math.abs(v)>=1000) return "$"+(v/1000).toFixed(Math.abs(v)>=10000?1:2)+"B";
+  var a = Math.abs(v), s = a>=100 ? v.toFixed(0) : a>=10 ? v.toFixed(1) : v.toFixed(2);
+  return unit==="%" ? s+"%" : unit==="$M" ? "$"+s+"M" : unit==="M" ? s+"M" : s;
+}
+function niceTicks(lo, hi, n){
+  var span = hi-lo || 1, step = Math.pow(10, Math.floor(Math.log10(span/n))), err = span/n/step;
+  step *= err>=7.5?10: err>=3.5?5: err>=1.5?2:1;
+  var out=[], t=Math.ceil(lo/step)*step;
+  for (; t<=hi+step*1e-9; t+=step) out.push(+t.toFixed(10));
+  return out;
+}
+function monthLabel(s){ // "2026-03-14" or "2026-03" -> "Mar 2026"
+  var m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return m[+s.slice(5,7)-1]+" "+s.slice(0,4);
+}
+
+/* One card: title, takeaway, legend, chart, query, table. */
+function card(id, o){
+  var root = document.getElementById(id);
+  el("h3", {}, root, o.title);
+  el("p", {"class":"take"}, root, o.take);
+  if (o.series.length>1){
+    var lg = el("div", {"class":"legend"}, root);
+    o.series.forEach(function(s){
+      var item = el("span", {}, lg);
+      var k = el("i", {"class":"key"+(o.type==="bars"?" box":"")}, item);
+      if (o.type==="bars") k.style.background = s.color; else k.style.borderColor = s.color;
+      item.appendChild(document.createTextNode(s.name));
+    });
+  }
+  var holder = el("div", {"class":"chart"}, root);
+  draw(holder, o);
+  var q = el("details", {}, root); el("summary", {}, q, "Query and method");
+  el("pre", {}, q, o.query);
+  var t = el("details", {}, root); el("summary", {}, t, "Data table ("+o.x.length+" rows)");
+  var wrap = el("div", {"class":"tablewrap"}, t), tb = el("table", {}, wrap);
+  var hr = el("tr", {}, el("thead", {}, tb)); el("th", {}, hr, o.xName||"Date");
+  o.series.forEach(function(s){ el("th", {"class":"num"}, hr, s.name+" ("+o.unitName+")"); });
+  var body = el("tbody", {}, tb);
+  for (var i=o.x.length-1;i>=0;i--){
+    var tr = el("tr", {}, body); el("td", {}, tr, o.x[i]);
+    o.series.forEach(function(s){ el("td", {"class":"num"}, tr, fmtNum(s.values[i], o.unit)); });
+  }
+}
+
+function draw(holder, o){
+  var W=o.width||Math.max(340, Math.min(920, holder.clientWidth||920)), H=o.height||300, m={l:52,r:o.endLabels?(W<520?96:120):16,t:12,b:28}, pw=W-m.l-m.r, ph=H-m.t-m.b, n=o.x.length;
+  var svg = el("svg:svg", {viewBox:"0 0 "+W+" "+H, role:"img", "aria-label":o.title}, holder);
+  var max=0, i, j;
+  if (o.type==="bars"){ for(i=0;i<n;i++){ var sum=0; o.series.forEach(function(s){sum+=s.values[i]||0;}); if(sum>max)max=sum; } }
+  else o.series.forEach(function(s){ s.values.forEach(function(v){ if(v!=null&&v>max)max=v; }); });
+  (o.refs||[]).forEach(function(rf){ if(rf.value>max)max=rf.value; });
+  var min=0; if (o.type!=="bars") o.series.forEach(function(s){ s.values.forEach(function(v){ if(v!=null&&v<min)min=v; }); });
+  var ticks = niceTicks(min, max*1.06, 5), top = Math.max(ticks[ticks.length-1], max), bot = Math.min(ticks[0], min);
+  function y(v){ return m.t + ph - (v-bot)/(top-bot)*ph; }
+  var band = pw/n;
+  function x(i){ return o.type==="bars" ? m.l + band*(i+.5) : m.l + (n===1?pw/2:pw*i/(n-1)); }
+  ticks.forEach(function(t){
+    el("svg:line", {x1:m.l, x2:m.l+pw, y1:y(t), y2:y(t), stroke: t===0?"var(--axis)":"var(--grid)", "stroke-width":1}, svg);
+    el("svg:text", {x:m.l-8, y:y(t)+4, "text-anchor":"end"}, svg, fmtNum(t, o.unit));
+  });
+  // x labels: first index of each year (or of each half year when the range is short)
+  var seen={}, last=-1e9;
+  for(i=0;i<n;i++){
+    var d=o.x[i], key=d.slice(0,4), label=key;
+    if (n<=110){ key=d.slice(0,7); label=monthLabel(d); if (i%Math.ceil(n/7)!==0) continue; }
+    if (seen[key]) continue; seen[key]=1;
+    if (x(i)-last<70) continue; last=x(i);
+    el("svg:text", {x:x(i), y:H-8, "text-anchor": i===0?"start":"middle"}, svg, label);
+  }
+  (o.refs||[]).forEach(function(rf){
+    el("svg:line", {x1:m.l, x2:m.l+pw, y1:y(rf.value), y2:y(rf.value), stroke:"var(--axis)", "stroke-width":1}, svg);
+    el("svg:text", {x:m.l+pw, y:y(rf.value)-6, "text-anchor":"end"}, svg, rf.label);
+  });
+  if (o.type==="bars"){
+    var bw = Math.min(24, band-2);
+    for(i=0;i<n;i++){
+      var base=0;
+      o.series.forEach(function(s, si){
+        var v=s.values[i]||0; if(v<=0) return;
+        var y0=y(base), y1=y(base+v), h=Math.max(0,y0-y1-(si>0?2:0)), isTop = si===o.series.length-1 || !(o.series[si+1].values[i]>0);
+        var r=isTop?Math.min(4,h):0, xl=x(i)-bw/2, yb=y0-(si>0?2:0), yt=yb-h;
+        el("svg:path", {d:"M"+xl+","+yb+"V"+(yt+r)+"Q"+xl+","+yt+" "+(xl+r)+","+yt+"H"+(xl+bw-r)+"Q"+(xl+bw)+","+yt+" "+(xl+bw)+","+(yt+r)+"V"+yb+"Z", fill:s.color}, svg);
+        base+=v;
+      });
+    }
+  } else {
+    o.series.forEach(function(s, si){
+      var dstr="", pen=false, lastI=-1;
+      for(i=0;i<n;i++){ var v=s.values[i]; if(v==null){pen=false;continue;} dstr+=(pen?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1); pen=true; lastI=i; }
+      if (si===0 && o.series.length===1 && lastI>=0){
+        var first=0; while(s.values[first]==null) first++;
+        el("svg:path", {d:dstr+"L"+x(lastI).toFixed(1)+","+y(Math.max(bot,0))+"L"+x(first).toFixed(1)+","+y(Math.max(bot,0))+"Z", fill:"var(--wash)"}, svg);
+      }
+      el("svg:path", {d:dstr, fill:"none", stroke:s.color, "stroke-width":2, "stroke-linejoin":"round", "stroke-linecap":"round"}, svg);
+      if (lastI>=0){
+        el("svg:circle", {cx:x(lastI), cy:y(s.values[lastI]), r:4, fill:s.color, stroke:"var(--surface)", "stroke-width":2}, svg);
+        if (o.endLabels) el("svg:text", {x:x(lastI)+10, y:y(s.values[lastI])+4, style:"fill:var(--ink2)"}, svg, fmtNum(s.values[lastI], o.unit)+" "+(s.short||""));
+      }
+    });
+  }
+  // hover layer: crosshair for lines, band highlight for bars, one tooltip listing every series
+  var cross = el("svg:line", {y1:m.t, y2:m.t+ph, stroke:"var(--axis)", "stroke-width":1, visibility:"hidden"}, svg);
+  var dots = o.type==="bars" ? [] : o.series.map(function(s){ return el("svg:circle", {r:4, fill:s.color, stroke:"var(--surface)", "stroke-width":2, visibility:"hidden"}, svg); });
+  var tip = el("div", {"class":"tip", role:"status"}, holder);
+  var hit = el("svg:rect", {x:m.l, y:m.t, width:pw, height:ph, fill:"transparent", tabindex:0, "aria-label":o.title+". Use arrow keys to read values."}, svg);
+  var cur = n-1;
+  function show(i){
+    cur=i; cross.setAttribute("x1",x(i)); cross.setAttribute("x2",x(i)); cross.setAttribute("visibility","visible");
+    dots.forEach(function(c, si){ var v=o.series[si].values[i]; if(v==null){c.setAttribute("visibility","hidden");return;}
+      c.setAttribute("cx",x(i)); c.setAttribute("cy",y(v)); c.setAttribute("visibility","visible"); });
+    tip.textContent=""; el("div", {"class":"d"}, tip, o.x[i].length===7?monthLabel(o.x[i]):o.x[i]);
+    o.series.forEach(function(s){ var row=el("div", {"class":"row"}, tip), nm=el("span", {"class":"nm"}, row);
+      var k=el("i", {"class":"key"}, nm); k.style.borderColor=s.color; nm.appendChild(document.createTextNode(s.name));
+      el("b", {}, row, fmtNum(s.values[i], o.unit)); });
+    if (o.type==="bars" && o.series.length>1){ var tot=0; o.series.forEach(function(s){tot+=s.values[i]||0;});
+      var row=el("div", {"class":"row"}, tip); el("span", {"class":"nm"}, row, "Total"); el("b", {}, row, fmtNum(tot, o.unit)); }
+    tip.style.display="block";
+    var box=holder.getBoundingClientRect(), px=x(i)/W*box.width, tw=tip.offsetWidth;
+    tip.style.left=Math.max(0, Math.min(box.width-tw, px+(px>box.width/2?-tw-12:12)))+"px"; tip.style.top="8px";
+  }
+  function hide(){ cross.setAttribute("visibility","hidden"); dots.forEach(function(c){c.setAttribute("visibility","hidden");}); tip.style.display="none"; }
+  function at(ev){ var box=svg.getBoundingClientRect(), px=(ev.clientX-box.left)/box.width*W;
+    var i = o.type==="bars" ? Math.floor((px-m.l)/band) : Math.round((px-m.l)/pw*(n-1));
+    show(Math.max(0, Math.min(n-1, i))); }
+  hit.addEventListener("pointermove", at); hit.addEventListener("pointerdown", at);
+  hit.addEventListener("pointerleave", hide); hit.addEventListener("blur", hide);
+  hit.addEventListener("focus", function(){ show(cur); });
+  hit.addEventListener("keydown", function(ev){
+    if (ev.key==="ArrowLeft"){ show(Math.max(0,cur-1)); ev.preventDefault(); }
+    if (ev.key==="ArrowRight"){ show(Math.min(n-1,cur+1)); ev.preventDefault(); }
+  });
+}
+
+var S = D.series, T = D.text;
+var C1 = "var(--s1)", C2 = "var(--s2)";
+
+document.getElementById("meta").textContent = "Data through " + D.as_of + " (UTC). Raw data pulled " + D.pulled_at + ".";
+D.tiles.forEach(function(t){
+  var b = el("div", {"class":"tile"}, document.getElementById("tiles"));
+  el("div", {"class":"label"}, b, t.label); el("div", {"class":"value"}, b, t.value); el("div", {"class":"note"}, b, t.note);
+});
+
+card("c-cover", {title:"Share of issuance returned to holders, by month", take:T.cover, type:"bars", unit:"%", unitName:"% of issuance",
+  xName:"Month", x:S.cover.x,
+  series:[{name:"Gas burn", color:C2, values:S.cover.burn},{name:"Intents buyback", color:C1, values:S.cover.buyback}],
+  query:"python -m ledger.epochs  ->  data/raw/epochs.csv   (block headers: total_supply at the first and last block of each epoch)\nledger/build.py: epoch_ledger(), daily_table()\nledger/dashboard.py: series() block 2\n\nper month:\n  issuance_usd = sum(minted_near[d] * price_usd[d])\n  gas burn %   = sum(burnt_near[d] * price_usd[d]) / issuance_usd\n  buyback %    = sum(intents_holders_revenue_usd[d]) / issuance_usd\n\nminted and burnt: block headers. price: NearBlocks. holders revenue: DefiLlama near-intents adapter\n(captured Intents revenue used to buy NEAR on the market since 2026-02-23)."});
+
+card("c-volume", {title:"NEAR Intents volume against the volume that would offset issuance", take:T.volume, type:"line", unit:"$M", unitName:"$M per day",
+  x:S.volume.x, endLabels:true,
+  series:[{name:"Intents volume, 30-day average", short:"actual", color:C1, values:S.volume.volume},{name:"Break-even volume", short:"needed", color:C2, values:S.volume.breakeven}],
+  query:"ledger/build.py: window(table, day, 30)\nledger/dashboard.py: series() block 3\n\nfor each week, over the trailing 30 days:\n  volume    = intents_volume_usd / 30\n  breakeven = volume * (issuance_usd - burn_usd) / intents_holders_revenue_usd\n\ni.e. the volume at which buyback revenue, at that window's capture rate, equals issuance not already burnt.\nThe series starts with the first full 30-day window after buybacks began.\nvolume and revenue: DefiLlama near-intents adapter. issuance and burn: block headers."});
+
+card("c-issuance", {title:"Realised issuance rate", take:T.issuance, type:"line", unit:"%", unitName:"% of supply a year",
+  x:S.issuance.x, endLabels:true,
+  series:[{name:"Issuance, annualised", short:"minted", color:C1, values:S.issuance.issuance_rate}],
+  query:"python -m ledger.epochs  ->  data/raw/epochs.csv\nledger/build.py: epoch_ledger(), window(table, day, 30)\n\nper epoch e (F = first block, L = last block):\n  minted(e) = supply(F(e)) - supply(L(e-1)) + burnt_in(F(e))\n  burnt(e)  = supply(F(e)) - supply(L(e))   + burnt_in(F(e))\n\nfor each week, over the trailing 30 days:\n  issuance rate = sum(minted) / average supply * 365.25 / 30"});
+
+card("c-staking", {title:"What stakers earned against how fast supply grew", take:T.staking, type:"line", unit:"%", unitName:"% a year",
+  x:S.staking.x, endLabels:true,
+  series:[{name:"Liquid staking share price growth", short:"staker", color:C1, values:S.staking.staker_apr},{name:"Net supply growth", short:"supply", color:C2, values:S.staking.net_growth}],
+  query:"python run.py (step: samples)  ->  data/raw/samples.csv\nview calls at one block per week:\n  linear-protocol.near  ft_price()\n  meta-pool.near        get_st_near_price()\nledger/dashboard.py: series() block 4\n\nstaker APR = mean over both pools of (price_now / price_13_weeks_ago) ^ (365.25 / days) - 1\nnet supply growth = (minted - burnt) / average supply * 365.25 / 91, same window, from block headers"});
+
+card("c-txns", {title:"Transactions per day", take:T.activity, type:"line", unit:"M", unitName:"millions a day", height:230,
+  x:S.activity.x, series:[{name:"Transactions, 7-day average", color:C1, values:S.activity.txns}],
+  query:"ledger/sources.py: NearBlocks /v1/charts, column txns\n7-day average, sampled weekly. Third-party indexer data."});
+card("c-accounts", {title:"Active accounts per day", take:"Accounts that signed at least one transaction that day, 7-day average.", type:"line", unit:"M", unitName:"millions a day", height:230,
+  x:S.activity.x, series:[{name:"Active accounts, 7-day average", color:C1, values:S.activity.accounts}],
+  query:"ledger/sources.py: NearBlocks /v1/charts, column active_accounts\n7-day average, sampled weekly. Third-party indexer data."});
+
+/* tables */
+function table(id, head, rows){
+  var t=document.getElementById(id), hr=el("tr", {}, el("thead", {}, t));
+  head.forEach(function(h){ el("th", {}, hr, h); });
+  var b=el("tbody", {}, t);
+  rows.forEach(function(r){ var tr=el("tr", {}, b); r.forEach(function(c){
+    var td=el("td", {}, tr); if (c && c.state){ td.className="state "+(c.ok?"ok":"no"); td.textContent=(c.ok?"✓ ":"✗ ")+c.state; } else td.textContent=c; }); });
+}
+table("claims", ["", "Claim", "Status", "Source"], D.claims.map(function(c){ return [c.id, c.claim, {state:c.holds?"holds":"fails", ok:c.holds}, c.source]; }));
+table("kills", ["", "The thesis is wrong if", "Now", "Status"], D.kills.map(function(k){ return [k.id, k.criterion, k.now, {state:k.tripped?"tripped":"not tripped", ok:!k.tripped}]; }));
+table("sources", ["File", "Source", "Rows", "SHA-256 (first 16)"], Object.keys(D.sources).sort().map(function(k){ var s=D.sources[k]; return [k, s.url||"", String(s.rows||""), (s.sha256||"").slice(0,16)]; }));
+
+/* model */
+var M = D.model, ctl = {
+  vol:{id:"m-vol", lo:M.volume_per_day/4, hi:M.volume_per_day*16, log:true, base:M.volume_per_day},
+  cap:{id:"m-cap", lo:M.capture_rate/4, hi:M.capture_rate*8, log:true, base:M.capture_rate},
+  price:{id:"m-price", lo:M.price/4, hi:M.price*8, log:true, base:M.price},
+  rate:{id:"m-rate", lo:0.005, hi:0.06, log:false, base:M.issuance_rate}
+};
+function toVal(c, p){ p/=100; return c.log ? c.lo*Math.pow(c.hi/c.lo, p) : c.lo+(c.hi-c.lo)*p; }
+function toPos(c, v){ return 100*(c.log ? Math.log(v/c.lo)/Math.log(c.hi/c.lo) : (v-c.lo)/(c.hi-c.lo)); }
+function money(v){ return v>=1e9 ? "$"+(v/1e9).toFixed(2)+"B" : v>=1e6 ? "$"+(v/1e6).toFixed(0)+"M" : "$"+v.toFixed(2); }
+function calc(){
+  var v={}; for (var k in ctl) v[k]=toVal(ctl[k], +document.getElementById(ctl[k].id).value);
+  var issued = M.supply*v.rate/365.25, bought = v.vol*v.cap/v.price, cover=(M.burn_per_day+bought)/issued;
+  var be = Math.max(issued-M.burn_per_day,0)*v.price/v.cap;
+  document.getElementById("o-vol").textContent = money(v.vol)+" ("+(v.vol/M.volume_per_day).toFixed(1)+"x)";
+  document.getElementById("o-cap").textContent = (v.cap*100).toFixed(3)+"%";
+  document.getElementById("o-price").textContent = "$"+v.price.toFixed(2);
+  document.getElementById("o-rate").textContent = (v.rate*100).toFixed(2)+"%";
+  document.getElementById("r-cover").textContent = (cover*100).toFixed(1)+"%";
+  document.getElementById("r-dil").textContent = (v.rate*(1-cover)*100).toFixed(2)+"%";
+  document.getElementById("r-be").textContent = money(be);
+  var g = M.yoy, yrs = v.vol>=be ? 0 : (g>0 ? Math.log(be/v.vol)/Math.log(1+g) : Infinity);
+  document.getElementById("r-yrs").textContent = isFinite(yrs) ? yrs.toFixed(1) : "never";
+  document.getElementById("r-yrs-note").textContent = "if volume keeps growing "+(g*100).toFixed(0)+"% a year, the last year's pace";
+  document.getElementById("r-bar").style.width = Math.max(0,Math.min(100,cover*100))+"%";
+}
+function reset(){ for (var k in ctl) document.getElementById(ctl[k].id).value = toPos(ctl[k], ctl[k].base); calc(); }
+for (var k in ctl) document.getElementById(ctl[k].id).addEventListener("input", calc);
+document.getElementById("m-reset").addEventListener("click", reset);
+reset();
+})();
+</script>
+</body>
+</html>

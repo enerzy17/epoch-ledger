@@ -1,0 +1,148 @@
+{
+ "as_of": "2026-11-11",
+ "claims": [
+  {
+   "id": "C01",
+   "holds": true,
+   "claim": "Over the 90 days to 2026-11-11 the protocol minted 8.03M NEAR, an annual issuance rate of 2.49% of supply. The protocol maximum is 2.5% a year.",
+   "value": 0.024928808494941078,
+   "source": "NEAR block headers via archival RPC (data/raw/epochs.csv)"
+  },
+  {
+   "id": "C02",
+   "holds": true,
+   "claim": "Gas fees burnt in the same 90 days were 78.51K NEAR, which offsets 0.98% of issuance. Gas burn alone does not fund security.",
+   "value": 0.009775386206566887,
+   "source": "NEAR block headers via archival RPC (data/raw/epochs.csv)"
+  },
+  {
+   "id": "C03",
+   "holds": true,
+   "claim": "The ledger covers 1,641 epochs from 2025-07-01 to 2026-11-12 with 0 epochs missing, and the header supply differs from the NearBlocks supply figure by 0.0020%.",
+   "value": 2.0159737028866257e-05,
+   "source": "NEAR block headers via archival RPC (data/raw/epochs.csv); NearBlocks daily chart (data/raw/nearblocks_daily.csv), third party"
+  },
+  {
+   "id": "C04",
+   "holds": true,
+   "claim": "Of the gas fees users paid over 90 days (96.72K NEAR per NearBlocks), 81.2% left the supply according to block headers.",
+   "value": 0.8117719532078239,
+   "source": "NEAR block headers via archival RPC (data/raw/epochs.csv); NearBlocks daily chart (data/raw/nearblocks_daily.csv), third party"
+  },
+  {
+   "id": "C05",
+   "holds": true,
+   "claim": "NEAR Intents settled $134.94M a day over 90 days, 223% above the same 90 days a year earlier.",
+   "value": 134939214.53333333,
+   "source": "DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"
+  },
+  {
+   "id": "C06",
+   "holds": true,
+   "claim": "Users paid 0.156% of Intents volume in fees. NEAR captured 0.042% of volume as revenue; the rest stayed with solvers and front ends.",
+   "value": 0.0004208572329462898,
+   "source": "DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"
+  },
+  {
+   "id": "C07",
+   "holds": true,
+   "claim": "Captured Intents revenue used to buy NEAR was $5.11M over 90 days, 17.7% of the USD value of issuance. That is 18 times what gas burn returned.",
+   "value": 0.17719440961549604,
+   "source": "DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party; NEAR block headers via archival RPC (data/raw/epochs.csv)"
+  },
+  {
+   "id": "C08",
+   "holds": true,
+   "claim": "Burn plus buyback returned 18.8% of issuance, so holders were still diluted at a net 2.03% a year.",
+   "value": 0.1876727889991483,
+   "source": "NEAR block headers via archival RPC (data/raw/epochs.csv); DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"
+  },
+  {
+   "id": "C09",
+   "holds": true,
+   "claim": "At the 90-day capture rate and a NEAR price of $3.58, Intents volume of $754.85M a day would offset all issuance. That is 5.6 times the current run rate.",
+   "value": 5.593970423894555,
+   "source": "ledger/model.py: breakeven_volume_usd_per_day"
+  },
+  {
+   "id": "C10",
+   "holds": true,
+   "claim": "Read the other way: today's Intents volume fully offsets issuance only if NEAR trades at $0.64 or lower. The market price is $3.58.",
+   "value": 0.640714150845421,
+   "source": "ledger/model.py: breakeven_price_usd"
+  },
+  {
+   "id": "C11",
+   "holds": true,
+   "claim": "44.4% of supply is staked. Liquid staking share prices grew at 4.25% a year over 90 days (after pool fees), which is 1.78% once net supply growth is taken off.",
+   "value": 0.017828764332944228,
+   "source": "validators RPC and staking pool view calls (data/raw/samples.csv)"
+  },
+  {
+   "id": "C12",
+   "holds": true,
+   "claim": "351 validators secure the chain. The 9 largest hold more than a third of stake and the ten largest hold 36.3%.",
+   "value": 9,
+   "source": "validators RPC and staking pool view calls (data/raw/samples.csv)"
+  },
+  {
+   "id": "C13",
+   "holds": true,
+   "claim": "NEAR's market value is $4.70B: 227 times annualised buyback revenue and 61 times annualised gross Intents fees.",
+   "value": 226.6063239653084,
+   "source": "NEAR block headers via archival RPC (data/raw/epochs.csv); NearBlocks daily chart (data/raw/nearblocks_daily.csv), third party; DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"
+  },
+  {
+   "id": "C14",
+   "holds": true,
+   "claim": "Base-layer activity over 90 days averaged 744,389 transactions and 71,693 active accounts a day; the 365-day averages are 1,892,794 and 138,756.",
+   "value": 744388.5222222222,
+   "source": "NearBlocks daily chart (data/raw/nearblocks_daily.csv), third party"
+  },
+  {
+   "id": "C15",
+   "holds": true,
+   "claim": "The three accounts that revenue.near.org lists for captured Intents revenue held 1.22M NEAR on 2026-02-27 and 4.25M NEAR on 2026-11-11, read from chain. The rise of 3.03M NEAR is 0.97 times the NEAR that DefiLlama's buyback revenue for the same days ($7.86M) buys at daily prices.",
+   "value": 0.9681530127545268,
+   "source": "view_account on the accounts revenue.near.org lists (data/raw/samples.csv); DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"
+  }
+ ],
+ "kill_criteria": [
+  {
+   "id": "K1",
+   "tripped": false,
+   "criterion": "Intents volume over 90 days falls below the same 90 days a year earlier.",
+   "now": "223% above a year earlier"
+  },
+  {
+   "id": "K2",
+   "tripped": false,
+   "criterion": "The captured revenue rate falls below 0.02% of volume (fee competition takes the margin).",
+   "now": "0.042%"
+  },
+  {
+   "id": "K3",
+   "tripped": false,
+   "criterion": "Buyback revenue falls below 10% of issuance for a 90-day window.",
+   "now": "17.7%"
+  },
+  {
+   "id": "K4",
+   "tripped": false,
+   "criterion": "Realised issuance rises back above 3% a year (the 2025 inflation cut is undone).",
+   "now": "2.49%"
+  },
+  {
+   "id": "K5",
+   "tripped": false,
+   "criterion": "The break-even multiple is higher than it was 90 days ago (volume is losing ground to issuance).",
+   "now": "5.6x now, 9.0x in the prior 90 days"
+  },
+  {
+   "id": "K6",
+   "tripped": false,
+   "criterion": "Fewer than 7 validators can hold a third of stake.",
+   "now": "9"
+  }
+ ]
+}

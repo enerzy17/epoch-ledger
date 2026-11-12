@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epoch Ledger: who pays for NEAR's security</title>
+<meta name="description" content="NEAR issuance, gas burn and Intents buyback measured from block headers. Every chart is rebuilt by one command.">
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --good:#006300; --bad:#b3261e; --wash:rgba(42,120,214,.10);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --good:#0ca30c; --bad:#e66767; --wash:rgba(57,135,229,.12);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --good:#0ca30c; --bad:#e66767; --wash:rgba(57,135,229,.12);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--ink);
+  font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:clamp(28px,5vw,44px);line-height:1.1;margin:0 0 12px;letter-spacing:-.02em}
+h2{font-size:22px;margin:48px 0 6px;letter-spacing:-.01em}
+h3{font-size:17px;margin:0 0 4px}
+p{margin:0 0 12px}
+a{color:inherit}
+code,pre{font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
+code{background:var(--wash);padding:1px 5px;border-radius:4px}
+pre{background:var(--page);border:1px solid var(--border);border-radius:8px;padding:12px;overflow-x:auto;margin:8px 0 0}
+.lede{font-size:19px;color:var(--ink2);max-width:780px}
+.meta{font-size:13px;color:var(--muted);margin-top:14px}
+.eyebrow{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:28px 0 0}
+@media (min-width:1080px){.tiles{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media (max-width:560px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.tile .label{font-size:13px;color:var(--ink2)}
+.tile .value{font-size:28px;font-weight:650;letter-spacing:-.02em;margin:2px 0;font-variant-numeric:tabular-nums}
+.tile .note{font-size:12px;color:var(--muted);line-height:1.35}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 18px 12px;margin:16px 0}
+.take{color:var(--ink2);margin:0 0 10px;max-width:760px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--ink2);margin:0 0 4px}
+.key{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.key.box{height:10px;border:0;border-radius:2px}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--muted);font-size:12px}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:130px;
+  display:none;z-index:2}
+.tip .d{color:var(--muted);margin-bottom:4px}
+.tip .row{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.tip .row b{font-variant-numeric:tabular-nums}
+.tip .nm{color:var(--ink2)}
+details{margin:8px 0 0;font-size:14px}
+summary{cursor:pointer;color:var(--ink2);padding:6px 0}
+.tablewrap{overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{position:sticky;top:0;background:var(--surface);color:var(--ink2);font-weight:600}
+td.num,th.num{text-align:right}
+.state{white-space:nowrap;font-weight:600}
+.state.ok{color:var(--good)} .state.no{color:var(--bad)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.model{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:760px){.model{grid-template-columns:1fr}}
+.ctl{margin:0 0 14px}
+.ctl label{display:flex;justify-content:space-between;font-size:14px;color:var(--ink2);gap:12px}
+.ctl output{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--s1);margin:6px 0 0}
+.out{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.out .tile .value{font-size:24px}
+.meter{height:10px;border-radius:5px;background:var(--wash);overflow:hidden;margin:12px 0 4px}
+.meter i{display:block;height:100%;background:var(--s1);border-radius:5px 0 0 5px}
+button.reset{font:inherit;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--ink);cursor:pointer}
+footer{margin-top:48px;font-size:13px;color:var(--muted)}
+</style>
+<script>
+// ?theme=dark or ?theme=light overrides the system setting (used for screenshots).
+(function(){var m=/[?&]theme=(dark|light)/.exec(location.search);if(m)document.documentElement.setAttribute("data-theme",m[1]);})();
+</script>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Epoch Ledger · NEAR HACKATHON · Investment Thesis</p>
+  <h1>Who pays for NEAR's security?</h1>
+  <p class="lede">Every epoch NEAR mints new tokens to pay validators. This page measures, from block headers, how much is minted, how much users burn in gas, and how much NEAR Intents revenue buys back. The long-term case for NEAR is that the last number catches the first.</p>
+  <p class="meta" id="meta"></p>
+
+  <div class="tiles" id="tiles"></div>
+
+  <h2>The ledger</h2>
+  <p class="take">Minted and burnt NEAR are read from <code>total_supply</code> in block headers at the first and last block of every epoch. USD figures use the NearBlocks daily price. Intents volume and revenue come from DefiLlama and are third-party data.</p>
+
+  <section class="card" id="c-cover"></section>
+  <section class="card" id="c-volume"></section>
+  <section class="card" id="c-issuance"></section>
+  <section class="card" id="c-staking"></section>
+  <div class="two">
+    <section class="card" id="c-txns"></section>
+    <section class="card" id="c-accounts"></section>
+  </div>
+
+  <h2>Run the model yourself</h2>
+  <p class="take">Same formulas as <code>ledger/model.py</code>. Issuance is fixed in NEAR and the buyback is fixed in dollars, so a higher NEAR price makes the gap harder to close.</p>
+  <section class="card">
+    <div class="model">
+      <div>
+        <div class="ctl"><label for="m-vol">Intents volume per day <output id="o-vol"></output></label>
+          <input type="range" id="m-vol" min="0" max="100" step="0.01"></div>
+        <div class="ctl"><label for="m-cap">Revenue captured, share of volume <output id="o-cap"></output></label>
+          <input type="range" id="m-cap" min="0" max="100" step="0.01"></div>
+        <div class="ctl"><label for="m-price">NEAR price <output id="o-price"></output></label>
+          <input type="range" id="m-price" min="0" max="100" step="0.01"></div>
+        <div class="ctl"><label for="m-rate">Issuance rate, annual <output id="o-rate"></output></label>
+          <input type="range" id="m-rate" min="0" max="100" step="0.01"></div>
+        <button class="reset" id="m-reset" type="button">Reset to measured values</button>
+      </div>
+      <div>
+        <div class="out">
+          <div class="tile"><div class="label">Issuance offset</div><div class="value" id="r-cover"></div>
+            <div class="note">burn plus buyback, share of issuance</div></div>
+          <div class="tile"><div class="label">Net dilution</div><div class="value" id="r-dil"></div>
+            <div class="note">annual supply growth holders bear</div></div>
+          <div class="tile"><div class="label">Break-even volume</div><div class="value" id="r-be"></div>
+            <div class="note">per day, at this price and capture</div></div>
+          <div class="tile"><div class="label">Years to break even</div><div class="value" id="r-yrs"></div>
+            <div class="note" id="r-yrs-note"></div></div>
+        </div>
+        <div class="meter" aria-hidden="true"><i id="r-bar"></i></div>
+        <div class="note" style="font-size:12px;color:var(--muted)">Bar: share of issuance offset, capped at 100%.</div>
+      </div>
+    </div>
+  </section>
+
+  <h2>Claims, checked on every run</h2>
+  <p class="take">Each sentence below is generated from the data and carries a test. <code>python run.py</code> exits with an error if any test fails.</p>
+  <div class="tablewrap" style="max-height:none"><table id="claims"></table></div>
+
+  <h2>What would change the view</h2>
+  <p class="take">These are the results that would retire the thesis. They are evaluated against the same data.</p>
+  <div class="tablewrap" style="max-height:none"><table id="kills"></table></div>
+
+  <h2>Sources and limits</h2>
+  <div class="tablewrap" style="max-height:none"><table id="sources"></table></div>
+  <p class="take" style="margin-top:12px">Limits: the buyback is taken from DefiLlama's reading of NEAR's revenue accounts. It is checked against the on-chain NEAR balance of those accounts (claim C15) but not re-derived trade by trade. Bought NEAR is held, not burnt, so it lowers float, not supply. Price, transactions and active accounts come from an indexer. Nothing on this page is investment advice.</p>
+
+  <footer>Built with standard-library Python. Rebuild everything with <code>python run.py</code>. Built at NEAR HACKATHON, November 2026. Code, thesis and raw data: <a href="https://github.com/enerzy17/epoch-ledger">github.com/enerzy17/epoch-ledger</a>.</footer>
+</main>
+
+<script id="payload" type="application/json">{"as_of":"2026-11-11","pulled_at":"2026-11-12T23:50:22Z","tiles":[{"label":"Issuance, annual rate","value":"2.49%","note":"minted over 90 days, from block headers"},{"label":"Offset by gas burn","value":"0.98%","note":"share of issuance burnt as fees"},{"label":"Offset by Intents buyback","value":"17.7%","note":"captured revenue used to buy NEAR"},{"label":"Net dilution","value":"2.03%","note":"annual, after burn and buyback"},{"label":"Break-even multiple","value":"5.6x","note":"Intents volume needed, against today"},{"label":"Staker real yield","value":"1.78%","note":"liquid staking growth less net supply growth"}],"model":{"supply":1311446993.0,"issuance_rate":0.024929,"price":3.5841,"burn_per_day":872.34,"volume_per_day":134939215.0,"capture_rate":0.00042086,"yoy":2.2326},"claims":[{"id":"C01","holds":true,"claim":"Over the 90 days to 2026-11-11 the protocol minted 8.03M NEAR, an annual issuance rate of 2.49% of supply. The protocol maximum is 2.5% a year.","value":0.024928808494941078,"source":"NEAR block headers via archival RPC (data/raw/epochs.csv)"},{"id":"C02","holds":true,"claim":"Gas fees burnt in the same 90 days were 78.51K NEAR, which offsets 0.98% of issuance. Gas burn alone does not fund security.","value":0.009775386206566887,"source":"NEAR block headers via archival RPC (data/raw/epochs.csv)"},{"id":"C03","holds":true,"claim":"The ledger covers 1,641 epochs from 2025-07-01 to 2026-11-12 with 0 epochs missing, and the header supply differs from the NearBlocks supply figure by 0.0020%.","value":2.0159737028866257e-05,"source":"NEAR block headers via archival RPC (data/raw/epochs.csv); NearBlocks daily chart (data/raw/nearblocks_daily.csv), third party"},{"id":"C04","holds":true,"claim":"Of the gas fees users paid over 90 days (96.72K NEAR per NearBlocks), 81.2% left the supply according to block headers.","value":0.8117719532078239,"source":"NEAR block headers via archival RPC (data/raw/epochs.csv); NearBlocks daily chart (data/raw/nearblocks_daily.csv), third party"},{"id":"C05","holds":true,"claim":"NEAR Intents settled $134.94M a day over 90 days, 223% above the same 90 days a year earlier.","value":134939214.53333333,"source":"DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"},{"id":"C06","holds":true,"claim":"Users paid 0.156% of Intents volume in fees. NEAR captured 0.042% of volume as revenue; the rest stayed with solvers and front ends.","value":0.0004208572329462898,"source":"DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"},{"id":"C07","holds":true,"claim":"Captured Intents revenue used to buy NEAR was $5.11M over 90 days, 17.7% of the USD value of issuance. That is 18 times what gas burn returned.","value":0.17719440961549604,"source":"DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party; NEAR block headers via archival RPC (data/raw/epochs.csv)"},{"id":"C08","holds":true,"claim":"Burn plus buyback returned 18.8% of issuance, so holders were still diluted at a net 2.03% a year.","value":0.1876727889991483,"source":"NEAR block headers via archival RPC (data/raw/epochs.csv); DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"},{"id":"C09","holds":true,"claim":"At the 90-day capture rate and a NEAR price of $3.58, Intents volume of $754.85M a day would offset all issuance. That is 5.6 times the current run rate.","value":5.593970423894555,"source":"ledger/model.py: breakeven_volume_usd_per_day"},{"id":"C10","holds":true,"claim":"Read the other way: today's Intents volume fully offsets issuance only if NEAR trades at $0.64 or lower. The market price is $3.58.","value":0.640714150845421,"source":"ledger/model.py: breakeven_price_usd"},{"id":"C11","holds":true,"claim":"44.4% of supply is staked. Liquid staking share prices grew at 4.25% a year over 90 days (after pool fees), which is 1.78% once net supply growth is taken off.","value":0.017828764332944228,"source":"validators RPC and staking pool view calls (data/raw/samples.csv)"},{"id":"C12","holds":true,"claim":"351 validators secure the chain. The 9 largest hold more than a third of stake and the ten largest hold 36.3%.","value":9,"source":"validators RPC and staking pool view calls (data/raw/samples.csv)"},{"id":"C13","holds":true,"claim":"NEAR's market value is $4.70B: 227 times annualised buyback revenue and 61 times annualised gross Intents fees.","value":226.6063239653084,"source":"NEAR block headers via archival RPC (data/raw/epochs.csv); NearBlocks daily chart (data/raw/nearblocks_daily.csv), third party; DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"},{"id":"C14","holds":true,"claim":"Base-layer activity over 90 days averaged 744,389 transactions and 71,693 active accounts a day; the 365-day averages are 1,892,794 and 138,756.","value":744388.5222222222,"source":"NearBlocks daily chart (data/raw/nearblocks_daily.csv), third party"},{"id":"C15","holds":true,"claim":"The three accounts that revenue.near.org lists for captured Intents revenue held 1.22M NEAR on 2026-02-27 and 4.25M NEAR on 2026-11-11, read from chain. The rise of 3.03M NEAR is 0.97 times the NEAR that DefiLlama's buyback revenue for the same days ($7.86M) buys at daily prices.","value":0.9681530127545268,"source":"view_account on the accounts revenue.near.org lists (data/raw/samples.csv); DefiLlama near-intents adapter (data/raw/llama_intents_*.csv), third party"}],"kills":[{"id":"K1","tripped":false,"criterion":"Intents volume over 90 days falls below the same 90 days a year earlier.","now":"223% above a year earlier"},{"id":"K2","tripped":false,"criterion":"The captured revenue rate falls below 0.02% of volume (fee competition takes the margin).","now":"0.042%"},{"id":"K3","tripped":false,"criterion":"Buyback revenue falls below 10% of issuance for a 90-day window.","now":"17.7%"},{"id":"K4","tripped":false,"criterion":"Realised issuance rises back above 3% a year (the 2025 inflation cut is undone).","now":"2.49%"},{"id":"K5","tripped":false,"criterion":"The break-even multiple is higher than it was 90 days ago (volume is losing ground to issuance).","now":"5.6x now, 9.0x in the prior 90 days"},{"id":"K6","tripped":false,"criterion":"Fewer than 7 validators can hold a third of stake.","now":"9"}],"series":{"issuance":{"x":["2025-08-06","2025-08-13","2025-08-20","2025-08-27","2025-09-03","2025-09-10","2025-09-17","2025-09-24","2025-10-01","2025-10-08","2025-10-15","2025-10-22","2025-10-29","2025-11-05","2025-11-12","2025-11-19","2025-11-26","2025-12-03","2025-12-10","2025-12-17","2025-12-24","2025-12-31","2026-01-07","2026-01-14","2026-01-21","2026-01-28","2026-02-04","2026-02-11","2026-02-18","2026-02-25","2026-03-04","2026-03-11","2026-03-18","2026-03-25","2026-04-01","2026-04-08","2026-04-15","2026-04-22","2026-04-29","2026-05-06","2026-05-13","2026-05-20","2026-05-27","2026-06-03","2026-06-10","2026-06-17","2026-06-24","2026-07-01","2026-07-08","2026-07-15","2026-07-22","2026-07-29","2026-08-05","2026-08-12","2026-08-19","2026-08-26","2026-09-02","2026-09-09","2026-09-16","2026-09-23","2026-09-30","2026-10-07","2026-10-14","2026-10-21","2026-10-28","2026-11-04","2026-11-11"],"issuance_rate":[4.98,4.981,4.968,5.028,5.017,4.994,4.978,4.985,4.992,5.008,4.98,4.941,4.989,4.411,3.83,3.216,2.632,2.5,2.48,2.479,2.469,2.459,2.476,2.492,2.484,2.482,2.48,2.472,2.474,2.494,2.495,2.495,2.496,2.489,2.479,2.495,2.493,2.494,2.491,2.488,2.49,2.471,2.477,2.513,2.483,2.486,2.484,2.48,2.481,2.501,2.507,2.487,2.49,2.467,2.489,2.491,2.497,2.481,2.485,2.484,2.494,2.491,2.506,2.492,2.478,2.488,2.499],"net_growth":[4.898,4.896,4.882,4.941,4.933,4.911,4.896,4.904,4.913,4.928,4.901,4.862,4.91,4.333,3.752,3.14,2.555,2.423,2.405,2.408,2.401,2.394,2.413,2.429,2.422,2.421,2.419,2.411,2.414,2.434,2.433,2.433,2.434,2.428,2.42,2.446,2.453,2.464,2.472,2.471,2.473,2.454,2.459,2.493,2.462,2.464,2.463,2.46,2.462,2.483,2.489,2.469,2.472,2.449,2.471,2.472,2.478,2.461,2.465,2.463,2.47,2.465,2.475,2.459,2.448,2.461,2.476]},"cover":{"x":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09","2026-10"],"burn":[1.627,1.695,1.598,1.634,3.078,2.668,2.479,2.454,2.425,0.713,0.781,0.823,0.717,0.762,1.04,1.158],"buyback":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,7.549,16.047,7.312,12.731,11.002,9.768,15.148,21.503,16.136]},"volume":{"x":["2026-03-25","2026-04-01","2026-04-08","2026-04-15","2026-04-22","2026-04-29","2026-05-06","2026-05-13","2026-05-20","2026-05-27","2026-06-03","2026-06-10","2026-06-17","2026-06-24","2026-07-01","2026-07-08","2026-07-15","2026-07-22","2026-07-29","2026-08-05","2026-08-12","2026-08-19","2026-08-26","2026-09-02","2026-09-09","2026-09-16","2026-09-23","2026-09-30","2026-10-07","2026-10-14","2026-10-21","2026-10-28","2026-11-04","2026-11-11"],"volume":[68.57,68.96,70.31,71.45,68.65,64.18,60.5,55.05,54.55,61.47,69.57,80.03,85.3,83.67,78.28,71.65,71.77,73.42,71.83,67.88,66.95,68.22,85.18,96.24,115.33,129.07,148.05,160.1,151.71,161.19,145.03,132.18,133.25,124.38],"breakeven":[482.17,415.01,417.19,470.14,484.55,859.57,722.0,672.24,596.74,477.07,525.19,507.83,567.77,653.06,721.19,931.36,924.3,800.37,747.0,691.52,637.92,620.59,587.04,600.33,569.06,615.51,642.82,736.81,792.83,830.43,831.43,801.85,849.65,820.68]},"staking":{"x":["2025-10-01","2025-10-08","2025-10-15","2025-10-22","2025-10-29","2025-11-05","2025-11-12","2025-11-19","2025-11-26","2025-12-03","2025-12-11","2025-12-18","2025-12-25","2026-01-01","2026-01-08","2026-01-15","2026-01-23","2026-01-30","2026-02-06","2026-02-13","2026-02-20","2026-02-27","2026-03-06","2026-03-14","2026-03-21","2026-03-28","2026-04-04","2026-04-11","2026-04-19","2026-04-26","2026-05-03","2026-05-10","2026-05-17","2026-05-24","2026-05-31","2026-06-07","2026-06-15","2026-06-22","2026-06-29","2026-07-06","2026-07-13","2026-07-20","2026-07-27","2026-08-03","2026-08-10","2026-08-17","2026-08-24","2026-09-01","2026-09-08","2026-09-15","2026-09-22","2026-09-29","2026-10-06","2026-10-13","2026-10-20","2026-10-27","2026-11-04","2026-11-11"],"staker_apr":[8.625,8.629,8.636,8.667,8.706,8.368,8.042,7.786,7.408,7.052,6.691,6.324,5.957,5.616,5.26,4.897,4.519,4.148,4.138,4.147,4.151,4.152,4.151,4.148,4.147,4.141,4.137,4.137,4.137,4.149,4.155,4.152,4.141,4.129,4.118,4.109,4.089,4.087,4.085,4.083,4.085,4.084,3.94,3.774,3.976,3.808,3.64,3.472,3.901,3.748,4.035,4.06,4.087,4.105,4.114,4.269,4.455,4.251],"net_growth":[4.91,4.909,4.908,4.896,4.897,4.707,4.513,4.318,4.123,3.936,3.722,3.519,3.341,3.154,2.955,2.771,2.543,2.416,2.425,2.422,2.421,2.421,2.427,2.424,2.429,2.433,2.43,2.437,2.44,2.449,2.448,2.456,2.461,2.456,2.466,2.462,2.462,2.466,2.471,2.475,2.478,2.465,2.468,2.473,2.471,2.471,2.472,2.476,2.471,2.471,2.472,2.47,2.465,2.464,2.47,2.473,2.462,2.475]},"activity":{"x":["2023-11-22","2023-11-29","2023-12-06","2023-12-13","2023-12-20","2023-12-27","2024-01-03","2024-01-10","2024-01-17","2024-01-24","2024-01-31","2024-02-07","2024-02-14","2024-02-21","2024-02-28","2024-03-06","2024-03-13","2024-03-20","2024-03-27","2024-04-03","2024-04-10","2024-04-17","2024-04-24","2024-05-01","2024-05-08","2024-05-15","2024-05-22","2024-05-29","2024-06-05","2024-06-12","2024-06-19","2024-06-26","2024-07-03","2024-07-10","2024-07-17","2024-07-24","2024-07-31","2024-08-07","2024-08-14","2024-08-21","2024-08-28","2024-09-04","2024-09-11","2024-09-18","2024-09-25","2024-10-02","2024-10-09","2024-10-16","2024-10-23","2024-10-30","2024-11-06","2024-11-13","2024-11-20","2024-11-27","2024-12-04","2024-12-11","2024-12-18","2024-12-25","2025-01-01","2025-01-08","2025-01-15","2025-01-22","2025-01-29","2025-02-05","2025-02-12","2025-02-19","2025-02-26","2025-03-05","2025-03-12","2025-03-19","2025-03-26","2025-04-02","2025-04-09","2025-04-16","2025-04-23","2025-04-30","2025-05-07","2025-05-14","2025-05-21","2025-05-28","2025-06-04","2025-06-11","2025-06-18","2025-06-25","2025-07-02","2025-07-09","2025-07-16","2025-07-23","2025-07-30","2025-08-06","2025-08-13","2025-08-20","2025-08-27","2025-09-03","2025-09-10","2025-09-17","2025-09-24","2025-10-01","2025-10-08","2025-10-15","2025-10-22","2025-10-29","2025-11-05","2025-11-12","2025-11-19","2025-11-26","2025-12-03","2025-12-10","2025-12-17","2025-12-24","2025-12-31","2026-01-07","2026-01-14","2026-01-21","2026-01-28","2026-02-04","2026-02-11","2026-02-18","2026-02-25","2026-03-04","2026-03-11","2026-03-18","2026-03-25","2026-04-01","2026-04-08","2026-04-15","2026-04-22","2026-04-29","2026-05-06","2026-05-13","2026-05-20","2026-05-27","2026-06-03","2026-06-10","2026-06-17","2026-06-24","2026-07-01","2026-07-08","2026-07-15","2026-07-22","2026-07-29","2026-08-05","2026-08-12","2026-08-19","2026-08-26","2026-09-02","2026-09-09","2026-09-16","2026-09-23","2026-09-30","2026-10-07","2026-10-14","2026-10-21","2026-10-28","2026-11-04","2026-11-11"],"txns":[1.734,2.942,6.564,1.995,2.922,3.981,4.756,3.159,3.283,2.37,2.38,3.558,4.057,4.965,5.346,6.079,5.092,3.897,5.757,8.592,7.571,7.669,7.386,7.038,6.918,6.797,7.073,8.68,8.433,7.879,6.749,8.192,9.435,7.8,6.612,6.705,6.309,6.208,5.97,6.377,6.68,7.216,7.081,7.23,7.537,6.655,7.502,6.739,7.052,6.767,7.27,7.451,7.011,6.994,7.46,8.312,9.034,8.068,7.928,6.623,6.276,7.775,7.951,6.291,7.272,6.754,7.238,6.452,6.436,5.903,7.499,6.647,6.697,6.929,5.872,5.546,5.462,5.374,5.28,4.986,4.947,4.942,4.842,4.85,4.892,4.688,4.167,4.839,5.423,5.346,4.953,5.032,4.964,4.849,4.825,4.715,4.499,4.55,4.523,4.768,4.531,4.396,4.335,4.232,4.319,4.254,4.186,3.967,3.799,3.829,3.649,3.588,3.557,3.464,3.439,3.489,3.516,3.553,3.332,3.531,3.31,3.243,3.449,3.955,0.952,0.909,0.821,0.734,0.747,0.769,0.767,0.916,0.867,0.891,0.795,0.763,0.736,0.781,0.755,0.712,0.711,0.693,0.663,0.654,0.751,0.653,0.729,0.721,0.888,0.903,0.899,0.838,0.655,0.577,0.597,0.802],"accounts":[0.846,0.865,0.559,0.965,1.206,1.36,1.178,1.046,1.191,1.119,1.286,1.229,1.149,1.09,1.282,1.354,1.151,1.301,1.44,1.56,1.486,1.85,1.884,1.926,1.768,1.736,1.81,1.902,1.908,2.001,2.058,1.991,1.991,2.0,1.915,1.945,1.956,1.753,0.799,0.722,0.715,0.729,0.981,1.014,0.991,1.016,1.026,1.032,0.982,0.96,0.945,0.96,0.941,0.807,0.903,0.912,0.954,0.91,0.926,0.907,0.895,0.88,0.857,0.839,0.83,0.797,0.518,0.522,0.515,0.498,0.495,0.543,0.483,0.461,0.471,0.458,0.426,0.428,0.441,0.397,0.38,0.366,0.36,0.34,0.333,0.325,0.339,0.343,0.342,0.337,0.334,0.34,0.326,0.317,0.305,0.298,0.291,0.289,0.284,0.275,0.272,0.266,0.254,0.251,0.246,0.232,0.231,0.226,0.221,0.256,0.2,0.194,0.179,0.17,0.17,0.217,0.293,0.45,0.151,0.15,0.148,0.146,0.139,0.137,0.133,0.133,0.13,0.123,0.126,0.123,0.116,0.122,0.116,0.116,0.113,0.11,0.107,0.105,0.094,0.088,0.087,0.084,0.082,0.081,0.081,0.078,0.075,0.058,0.056,0.059,0.133,0.06,0.054,0.052,0.056,0.092]},"validators":{"x":["2025-07-01","2025-07-08","2025-07-15","2025-07-22","2025-07-29","2025-08-05","2025-08-12","2025-08-19","2025-08-26","2025-09-02","2025-09-09","2025-09-17","2025-09-24","2025-10-01","2025-10-08","2025-10-15","2025-10-22","2025-10-29","2025-11-05","2025-11-12","2025-11-19","2025-11-26","2025-12-03","2025-12-11","2025-12-18","2025-12-25","2026-01-01","2026-01-08","2026-01-15","2026-01-23","2026-01-30","2026-02-06","2026-02-13","2026-02-20","2026-02-27","2026-03-06","2026-03-14","2026-03-21","2026-03-28","2026-04-04","2026-04-11","2026-04-19","2026-04-26","2026-05-03","2026-05-10","2026-05-17","2026-05-24","2026-05-31","2026-06-07","2026-06-15","2026-06-22","2026-06-29","2026-07-06","2026-07-13","2026-07-20","2026-07-27","2026-08-03","2026-08-10","2026-08-17","2026-08-24","2026-09-01","2026-09-08","2026-09-15","2026-09-22","2026-09-29","2026-10-06","2026-10-13","2026-10-20","2026-10-27","2026-11-04","2026-11-11"],"nakamoto":[11,11,11,11,11,11,10,10,10,10,10,10,9,10,9,9,9,9,9,8,8,8,8,8,8,9,11,11,10,10,10,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,8,8,8,8,8,9,8,9,9,9,9,10,9,10,9],"count":[267,284,300,300,300,300,300,281,296,296,300,300,285,298,303,317,338,356,370,367,369,376,385,354,379,379,383,375,379,379,375,384,393,402,400,407,410,421,434,436,440,426,434,433,410,418,422,423,422,387,400,409,418,426,419,406,413,422,421,414,415,418,422,411,410,414,409,392,377,371,351]}},"text":{"issuance":"NEAR now mints 2.49% of supply a year, and burnt gas takes back only 0.98% of that.","cover":"In the last 90 days 18.8% of issuance came back to holders, almost all of it through the Intents buyback, not gas.","volume":"Over 90 days Intents ran at $134.94M a day; $754.85M a day would offset all issuance, 5.6 times as much. The lines below use 30-day windows, so their last points differ from the 90-day figures.","staking":"Stakers earned 4.25% a year after pool fees, 1.78% more than supply grew. Holders who do not stake lose 2.03% a year.","activity":"The base layer averaged 0.74M transactions a day from 72K active accounts over 90 days, against 1.89M and 139K over 365 days. Intents volume does not depend on base-layer transaction counts."},"sources":{"epochs.csv":{"rows":1642,"sha256":"1f8f28900a3b0506848f4a677363261857f4764b8f31f69cc2298f8a7b7437d9","url":"NEAR mainnet block headers: archival JSON-RPC and neardata.xyz (ledger/rpc.py)"},"llama_chain_fees.csv":{"rows":2220,"sha256":"0e12256cd85948694bd89ac0df9cd52fcaaeb1ebdcbf60cc22089391d1b29b20","url":"https://api.llama.fi/summary/fees/near?dataType=dailyFees"},"llama_intents_fees.csv":{"rows":551,"sha256":"858a91fbc158dfefd90154a4ba393f614594b57aa9f3094b0f0f21e994eb6c76","url":"https://api.llama.fi/summary/fees/near-intents?dataType=dailyFees"},"llama_intents_holders_revenue.csv":{"rows":551,"sha256":"aaf2af268c605b2f0d5c183761829df78bdd642019a0bb9ea78517780b5f04ab","url":"https://api.llama.fi/summary/fees/near-intents?dataType=dailyHoldersRevenue"},"llama_intents_revenue.csv":{"rows":551,"sha256":"2250df76b36f54170adbebc442924a664fbce5c6ade6bfecc046ac23440f0e34","url":"https://api.llama.fi/summary/fees/near-intents?dataType=dailyRevenue"},"llama_intents_volume.csv":{"rows":702,"sha256":"130bbe88de6e3eb8697a7c3edc7f5c28b9a4082c4bf417b31cbd1ecac900530d","url":"https://api.llama.fi/summary/dexs/near-intents?dataType=dailyVolume"},"llama_methodology.json":{"rows":5,"sha256":"e370bcac93ed22d9afad9dd2afde82a77462f919d063234057cb7d683d43a15b","url":"methodology fields of the DefiLlama responses above"},"llama_stablecoins.csv":{"rows":1587,"sha256":"74cb6233fbdd1c29af518b713bcbb95dd6aa48aa74a716f391818f6a2f17c8f2","url":"https://stablecoins.llama.fi/stablecoincharts/Near"},"llama_tvl.csv":{"rows":1911,"sha256":"905fd1839a1cb29780960c210dc788c268399a8549afa194bf68621cfd4ba3ac","url":"https://api.llama.fi/v2/historicalChainTvl/Near"},"nearblocks_daily.csv":{"rows":2305,"sha256":"bf978ee4785667c1621b6a215a563d7631317ce71b9212de2aa7ca3c3ea930ff","url":"https://api.nearblocks.io/v1/charts"},"samples.csv":{"rows":72,"sha256":"6a8bde3873d99b50366f9f1ce0dcb892b8458afbd3b95416b0b2004348411438","url":"validators RPC; ft_price on linear-protocol.near; get_st_near_price on meta-pool.near; view_account on the three revenue accounts"}}}</script>
+<script>
+(function(){
+"use strict";
+var D = JSON.parse(document.getElementById("payload").textContent);
+var NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent, text){
+  var n = tag.indexOf("svg:")===0 ? document.createElementNS(NS, tag.slice(4)) : document.createElement(tag);
+  for (var k in attrs||{}) n.setAttribute(k, attrs[k]);
+  if (text!=null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function fmtNum(v, unit){
+  if (v==null) return "n/a";
+  if (unit==="$M" && Math.abs(v)>=1000) return "$"+(v/1000).toFixed(Math.abs(v)>=10000?1:2)+"B";
+  var a = Math.abs(v), s = a>=100 ? v.toFixed(0) : a>=10 ? v.toFixed(1) : v.toFixed(2);
+  return unit==="%" ? s+"%" : unit==="$M" ? "$"+s+"M" : unit==="M" ? s+"M" : s;
+}
+function niceTicks(lo, hi, n){
+  var span = hi-lo || 1, step = Math.pow(10, Math.floor(Math.log10(span/n))), err = span/n/step;
+  step *= err>=7.5?10: err>=3.5?5: err>=1.5?2:1;
+  var out=[], t=Math.ceil(lo/step)*step;
+  for (; t<=hi+step*1e-9; t+=step) out.push(+t.toFixed(10));
+  return out;
+}
+function monthLabel(s){ // "2026-03-14" or "2026-03" -> "Mar 2026"
+  var m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return m[+s.slice(5,7)-1]+" "+s.slice(0,4);
+}
+
+/* One card: title, takeaway, legend, chart, query, table. */
+function card(id, o){
+  var root = document.getElementById(id);
+  el("h3", {}, root, o.title);
+  el("p", {"class":"take"}, root, o.take);
+  if (o.series.length>1){
+    var lg = el("div", {"class":"legend"}, root);
+    o.series.forEach(function(s){
+      var item = el("span", {}, lg);
+      var k = el("i", {"class":"key"+(o.type==="bars"?" box":"")}, item);
+      if (o.type==="bars") k.style.background = s.color; else k.style.borderColor = s.color;
+      item.appendChild(document.createTextNode(s.name));
+    });
+  }
+  var holder = el("div", {"class":"chart"}, root);
+  draw(holder, o);
+  var q = el("details", {}, root); el("summary", {}, q, "Query and method");
+  el("pre", {}, q, o.query);
+  var t = el("details", {}, root); el("summary", {}, t, "Data table ("+o.x.length+" rows)");
+  var wrap = el("div", {"class":"tablewrap"}, t), tb = el("table", {}, wrap);
+  var hr = el("tr", {}, el("thead", {}, tb)); el("th", {}, hr, o.xName||"Date");
+  o.series.forEach(function(s){ el("th", {"class":"num"}, hr, s.name+" ("+o.unitName+")"); });
+  var body = el("tbody", {}, tb);
+  for (var i=o.x.length-1;i>=0;i--){
+    var tr = el("tr", {}, body); el("td", {}, tr, o.x[i]);
+    o.series.forEach(function(s){ el("td", {"class":"num"}, tr, fmtNum(s.values[i], o.unit)); });
+  }
+}
+
+function draw(holder, o){
+  var W=o.width||Math.max(340, Math.min(920, holder.clientWidth||920)), H=o.height||300, m={l:52,r:o.endLabels?(W<520?96:120):16,t:12,b:28}, pw=W-m.l-m.r, ph=H-m.t-m.b, n=o.x.length;
+  var svg = el("svg:svg", {viewBox:"0 0 "+W+" "+H, role:"img", "aria-label":o.title}, holder);
+  var max=0, i, j;
+  if (o.type==="bars"){ for(i=0;i<n;i++){ var sum=0; o.series.forEach(function(s){sum+=s.values[i]||0;}); if(sum>max)max=sum; } }
+  else o.series.forEach(function(s){ s.values.forEach(function(v){ if(v!=null&&v>max)max=v; }); });
+  (o.refs||[]).forEach(function(rf){ if(rf.value>max)max=rf.value; });
+  var min=0; if (o.type!=="bars") o.series.forEach(function(s){ s.values.forEach(function(v){ if(v!=null&&v<min)min=v; }); });
+  var ticks = niceTicks(min, max*1.06, 5), top = Math.max(ticks[ticks.length-1], max), bot = Math.min(ticks[0], min);
+  function y(v){ return m.t + ph - (v-bot)/(top-bot)*ph; }
+  var band = pw/n;
+  function x(i){ return o.type==="bars" ? m.l + band*(i+.5) : m.l + (n===1?pw/2:pw*i/(n-1)); }
+  ticks.forEach(function(t){
+    el("svg:line", {x1:m.l, x2:m.l+pw, y1:y(t), y2:y(t), stroke: t===0?"var(--axis)":"var(--grid)", "stroke-width":1}, svg);
+    el("svg:text", {x:m.l-8, y:y(t)+4, "text-anchor":"end"}, svg, fmtNum(t, o.unit));
+  });
+  // x labels: first index of each year (or of each half year when the range is short)
+  var seen={}, last=-1e9;
+  for(i=0;i<n;i++){
+    var d=o.x[i], key=d.slice(0,4), label=key;
+    if (n<=110){ key=d.slice(0,7); label=monthLabel(d); if (i%Math.ceil(n/7)!==0) continue; }
+    if (seen[key]) continue; seen[key]=1;
+    if (x(i)-last<70) continue; last=x(i);
+    el("svg:text", {x:x(i), y:H-8, "text-anchor": i===0?"start":"middle"}, svg, label);
+  }
+  (o.refs||[]).forEach(function(rf){
+    el("svg:line", {x1:m.l, x2:m.l+pw, y1:y(rf.value), y2:y(rf.value), stroke:"var(--axis)", "stroke-width":1}, svg);
+    el("svg:text", {x:m.l+pw, y:y(rf.value)-6, "text-anchor":"end"}, svg, rf.label);
+  });
+  if (o.type==="bars"){
+    var bw = Math.min(24, band-2);
+    for(i=0;i<n;i++){
+      var base=0;
+      o.series.forEach(function(s, si){
+        var v=s.values[i]||0; if(v<=0) return;
+        var y0=y(base), y1=y(base+v), h=Math.max(0,y0-y1-(si>0?2:0)), isTop = si===o.series.length-1 || !(o.series[si+1].values[i]>0);
+        var r=isTop?Math.min(4,h):0, xl=x(i)-bw/2, yb=y0-(si>0?2:0), yt=yb-h;
+        el("svg:path", {d:"M"+xl+","+yb+"V"+(yt+r)+"Q"+xl+","+yt+" "+(xl+r)+","+yt+"H"+(xl+bw-r)+"Q"+(xl+bw)+","+yt+" "+(xl+bw)+","+(yt+r)+"V"+yb+"Z", fill:s.color}, svg);
+        base+=v;
+      });
+    }
+  } else {
+    o.series.forEach(function(s, si){
+      var dstr="", pen=false, lastI=-1;
+      for(i=0;i<n;i++){ var v=s.values[i]; if(v==null){pen=false;continue;} dstr+=(pen?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1); pen=true; lastI=i; }
+      if (si===0 && o.series.length===1 && lastI>=0){
+        var first=0; while(s.values[first]==null) first++;
+        el("svg:path", {d:dstr+"L"+x(lastI).toFixed(1)+","+y(Math.max(bot,0))+"L"+x(first).toFixed(1)+","+y(Math.max(bot,0))+"Z", fill:"var(--wash)"}, svg);
+      }
+      el("svg:path", {d:dstr, fill:"none", stroke:s.color, "stroke-width":2, "stroke-linejoin":"round", "stroke-linecap":"round"}, svg);
+      if (lastI>=0){
+        el("svg:circle", {cx:x(lastI), cy:y(s.values[lastI]), r:4, fill:s.color, stroke:"var(--surface)", "stroke-width":2}, svg);
+        if (o.endLabels) el("svg:text", {x:x(lastI)+10, y:y(s.values[lastI])+4, style:"fill:var(--ink2)"}, svg, fmtNum(s.values[lastI], o.unit)+" "+(s.short||""));
+      }
+    });
+  }
+  // hover layer: crosshair for lines, band highlight for bars, one tooltip listing every series
+  var cross = el("svg:line", {y1:m.t, y2:m.t+ph, stroke:"var(--axis)", "stroke-width":1, visibility:"hidden"}, svg);
+  var dots = o.type==="bars" ? [] : o.series.map(function(s){ return el("svg:circle", {r:4, fill:s.color, stroke:"var(--surface)", "stroke-width":2, visibility:"hidden"}, svg); });
+  var tip = el("div", {"class":"tip", role:"status"}, holder);
+  var hit = el("svg:rect", {x:m.l, y:m.t, width:pw, height:ph, fill:"transparent", tabindex:0, "aria-label":o.title+". Use arrow keys to read values."}, svg);
+  var cur = n-1;
+  function show(i){
+    cur=i; cross.setAttribute("x1",x(i)); cross.setAttribute("x2",x(i)); cross.setAttribute("visibility","visible");
+    dots.forEach(function(c, si){ var v=o.series[si].values[i]; if(v==null){c.setAttribute("visibility","hidden");return;}
+      c.setAttribute("cx",x(i)); c.setAttribute("cy",y(v)); c.setAttribute("visibility","visible"); });
+    tip.textContent=""; el("div", {"class":"d"}, tip, o.x[i].length===7?monthLabel(o.x[i]):o.x[i]);
+    o.series.forEach(function(s){ var row=el("div", {"class":"row"}, tip), nm=el("span", {"class":"nm"}, row);
+      var k=el("i", {"class":"key"}, nm); k.style.borderColor=s.color; nm.appendChild(document.createTextNode(s.name));
+      el("b", {}, row, fmtNum(s.values[i], o.unit)); });
+    if (o.type==="bars" && o.series.length>1){ var tot=0; o.series.forEach(function(s){tot+=s.values[i]||0;});
+      var row=el("div", {"class":"row"}, tip); el("span", {"class":"nm"}, row, "Total"); el("b", {}, row, fmtNum(tot, o.unit)); }
+    tip.style.display="block";
+    var box=holder.getBoundingClientRect(), px=x(i)/W*box.width, tw=tip.offsetWidth;
+    tip.style.left=Math.max(0, Math.min(box.width-tw, px+(px>box.width/2?-tw-12:12)))+"px"; tip.style.top="8px";
+  }
+  function hide(){ cross.setAttribute("visibility","hidden"); dots.forEach(function(c){c.setAttribute("visibility","hidden");}); tip.style.display="none"; }
+  function at(ev){ var box=svg.getBoundingClientRect(), px=(ev.clientX-box.left)/box.width*W;
+    var i = o.type==="bars" ? Math.floor((px-m.l)/band) : Math.round((px-m.l)/pw*(n-1));
+    show(Math.max(0, Math.min(n-1, i))); }
+  hit.addEventListener("pointermove", at); hit.addEventListener("pointerdown", at);
+  hit.addEventListener("pointerleave", hide); hit.addEventListener("blur", hide);
+  hit.addEventListener("focus", function(){ show(cur); });
+  hit.addEventListener("keydown", function(ev){
+    if (ev.key==="ArrowLeft"){ show(Math.max(0,cur-1)); ev.preventDefault(); }
+    if (ev.key==="ArrowRight"){ show(Math.min(n-1,cur+1)); ev.preventDefault(); }
+  });
+}
+
+var S = D.series, T = D.text;
+var C1 = "var(--s1)", C2 = "var(--s2)";
+
+document.getElementById("meta").textContent = "Data through " + D.as_of + " (UTC). Raw data pulled " + D.pulled_at + ".";
+D.tiles.forEach(function(t){
+  var b = el("div", {"class":"tile"}, document.getElementById("tiles"));
+  el("div", {"class":"label"}, b, t.label); el("div", {"class":"value"}, b, t.value); el("div", {"class":"note"}, b, t.note);
+});
+
+card("c-cover", {title:"Share of issuance returned to holders, by month", take:T.cover, type:"bars", unit:"%", unitName:"% of issuance",
+  xName:"Month", x:S.cover.x,
+  series:[{name:"Gas burn", color:C2, values:S.cover.burn},{name:"Intents buyback", color:C1, values:S.cover.buyback}],
+  query:"python -m ledger.epochs  ->  data/raw/epochs.csv   (block headers: total_supply at the first and last block of each epoch)\nledger/build.py: epoch_ledger(), daily_table()\nledger/dashboard.py: series() block 2\n\nper month:\n  issuance_usd = sum(minted_near[d] * price_usd[d])\n  gas burn %   = sum(burnt_near[d] * price_usd[d]) / issuance_usd\n  buyback %    = sum(intents_holders_revenue_usd[d]) / issuance_usd\n\nminted and burnt: block headers. price: NearBlocks. holders revenue: DefiLlama near-intents adapter\n(captured Intents revenue used to buy NEAR on the market since 2026-02-23)."});
+
+card("c-volume", {title:"NEAR Intents volume against the volume that would offset issuance", take:T.volume, type:"line", unit:"$M", unitName:"$M per day",
+  x:S.volume.x, endLabels:true,
+  series:[{name:"Intents volume, 30-day average", short:"actual", color:C1, values:S.volume.volume},{name:"Break-even volume", short:"needed", color:C2, values:S.volume.breakeven}],
+  query:"ledger/build.py: window(table, day, 30)\nledger/dashboard.py: series() block 3\n\nfor each week, over the trailing 30 days:\n  volume    = intents_volume_usd / 30\n  breakeven = volume * (issuance_usd - burn_usd) / intents_holders_revenue_usd\n\ni.e. the volume at which buyback revenue, at that window's capture rate, equals issuance not already burnt.\nThe series starts with the first full 30-day window after buybacks began.\nvolume and revenue: DefiLlama near-intents adapter. issuance and burn: block headers."});
+
+card("c-issuance", {title:"Realised issuance rate", take:T.issuance, type:"line", unit:"%", unitName:"% of supply a year",
+  x:S.issuance.x, endLabels:true,
+  series:[{name:"Issuance, annualised", short:"minted", color:C1, values:S.issuance.issuance_rate}],
+  query:"python -m ledger.epochs  ->  data/raw/epochs.csv\nledger/build.py: epoch_ledger(), window(table, day, 30)\n\nper epoch e (F = first block, L = last block):\n  minted(e) = supply(F(e)) - supply(L(e-1)) + burnt_in(F(e))\n  burnt(e)  = supply(F(e)) - supply(L(e))   + burnt_in(F(e))\n\nfor each week, over the trailing 30 days:\n  issuance rate = sum(minted) / average supply * 365.25 / 30"});
+
+card("c-staking", {title:"What stakers earned against how fast supply grew", take:T.staking, type:"line", unit:"%", unitName:"% a year",
+  x:S.staking.x, endLabels:true,
+  series:[{name:"Liquid staking share price growth", short:"staker", color:C1, values:S.staking.staker_apr},{name:"Net supply growth", short:"supply", color:C2, values:S.staking.net_growth}],
+  query:"python run.py (step: samples)  ->  data/raw/samples.csv\nview calls at one block per week:\n  linear-protocol.near  ft_price()\n  meta-pool.near        get_st_near_price()\nledger/dashboard.py: series() block 4\n\nstaker APR = mean over both pools of (price_now / price_13_weeks_ago) ^ (365.25 / days) - 1\nnet supply growth = (minted - burnt) / average supply * 365.25 / 91, same window, from block headers"});
+
+card("c-txns", {title:"Transactions per day", take:T.activity, type:"line", unit:"M", unitName:"millions a day", height:230,
+  x:S.activity.x, series:[{name:"Transactions, 7-day average", color:C1, values:S.activity.txns}],
+  query:"ledger/sources.py: NearBlocks /v1/charts, column txns\n7-day average, sampled weekly. Third-party indexer data."});
+card("c-accounts", {title:"Active accounts per day", take:"Accounts that signed at least one transaction that day, 7-day average.", type:"line", unit:"M", unitName:"millions a day", height:230,
+  x:S.activity.x, series:[{name:"Active accounts, 7-day average", color:C1, values:S.activity.accounts}],
+  query:"ledger/sources.py: NearBlocks /v1/charts, column active_accounts\n7-day average, sampled weekly. Third-party indexer data."});
+
+/* tables */
+function table(id, head, rows){
+  var t=document.getElementById(id), hr=el("tr", {}, el("thead", {}, t));
+  head.forEach(function(h){ el("th", {}, hr, h); });
+  var b=el("tbody", {}, t);
+  rows.forEach(function(r){ var tr=el("tr", {}, b); r.forEach(function(c){
+    var td=el("td", {}, tr); if (c && c.state){ td.className="state "+(c.ok?"ok":"no"); td.textContent=(c.ok?"✓ ":"✗ ")+c.state; } else td.textContent=c; }); });
+}
+table("claims", ["", "Claim", "Status", "Source"], D.claims.map(function(c){ return [c.id, c.claim, {state:c.holds?"holds":"fails", ok:c.holds}, c.source]; }));
+table("kills", ["", "The thesis is wrong if", "Now", "Status"], D.kills.map(function(k){ return [k.id, k.criterion, k.now, {state:k.tripped?"tripped":"not tripped", ok:!k.tripped}]; }));
+table("sources", ["File", "Source", "Rows", "SHA-256 (first 16)"], Object.keys(D.sources).sort().map(function(k){ var s=D.sources[k]; return [k, s.url||"", String(s.rows||""), (s.sha256||"").slice(0,16)]; }));
+
+/* model */
+var M = D.model, ctl = {
+  vol:{id:"m-vol", lo:M.volume_per_day/4, hi:M.volume_per_day*16, log:true, base:M.volume_per_day},
+  cap:{id:"m-cap", lo:M.capture_rate/4, hi:M.capture_rate*8, log:true, base:M.capture_rate},
+  price:{id:"m-price", lo:M.price/4, hi:M.price*8, log:true, base:M.price},
+  rate:{id:"m-rate", lo:0.005, hi:0.06, log:false, base:M.issuance_rate}
+};
+function toVal(c, p){ p/=100; return c.log ? c.lo*Math.pow(c.hi/c.lo, p) : c.lo+(c.hi-c.lo)*p; }
+function toPos(c, v){ return 100*(c.log ? Math.log(v/c.lo)/Math.log(c.hi/c.lo) : (v-c.lo)/(c.hi-c.lo)); }
+function money(v){ return v>=1e9 ? "$"+(v/1e9).toFixed(2)+"B" : v>=1e6 ? "$"+(v/1e6).toFixed(0)+"M" : "$"+v.toFixed(2); }
+function calc(){
+  var v={}; for (var k in ctl) v[k]=toVal(ctl[k], +document.getElementById(ctl[k].id).value);
+  var issued = M.supply*v.rate/365.25, bought = v.vol*v.cap/v.price, cover=(M.burn_per_day+bought)/issued;
+  var be = Math.max(issued-M.burn_per_day,0)*v.price/v.cap;
+  document.getElementById("o-vol").textContent = money(v.vol)+" ("+(v.vol/M.volume_per_day).toFixed(1)+"x)";
+  document.getElementById("o-cap").textContent = (v.cap*100).toFixed(3)+"%";
+  document.getElementById("o-price").textContent = "$"+v.price.toFixed(2);
+  document.getElementById("o-rate").textContent = (v.rate*100).toFixed(2)+"%";
+  document.getElementById("r-cover").textContent = (cover*100).toFixed(1)+"%";
+  document.getElementById("r-dil").textContent = (v.rate*(1-cover)*100).toFixed(2)+"%";
+  document.getElementById("r-be").textContent = money(be);
+  var g = M.yoy, yrs = v.vol>=be ? 0 : (g>0 ? Math.log(be/v.vol)/Math.log(1+g) : Infinity);
+  document.getElementById("r-yrs").textContent = isFinite(yrs) ? yrs.toFixed(1) : "never";
+  document.getElementById("r-yrs-note").textContent = "if volume keeps growing "+(g*100).toFixed(0)+"% a year, the last year's pace";
+  document.getElementById("r-bar").style.width = Math.max(0,Math.min(100,cover*100))+"%";
+}
+function reset(){ for (var k in ctl) document.getElementById(ctl[k].id).value = toPos(ctl[k], ctl[k].base); calc(); }
+for (var k in ctl) document.getElementById(ctl[k].id).addEventListener("input", calc);
+document.getElementById("m-reset").addEventListener("click", reset);
+reset();
+})();
+</script>
+</body>
+</html>
