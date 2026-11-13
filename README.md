@@ -7,6 +7,11 @@ Built at NEAR HACKATHON (November 2026) for the **Investment Thesis** track.
 - Thesis: [THESIS.md](THESIS.md)
 - Live numbers and every claim with its test: [RESULTS.md](RESULTS.md)
 - Dashboard, hosted: https://epoch-ledger.pages.dev (the same file as `docs/index.html`, which also opens from disk)
+- This repository, public: https://epoch-ledger.pages.dev/repo/ (browse the files, download an archive, or clone it)
+
+```
+git clone https://epoch-ledger.pages.dev/repo epoch-ledger
+```
 
 ## What it is
 
@@ -184,7 +189,7 @@ NEAR BigQuery and the NEAR Intents Explorer API were not used: both need credent
 
 - Everything in this repository was written during the hackathon window (first commit 2026-11-12). No earlier code is reused. There are no dependencies beyond the Python standard library.
 - The code and text were written with an AI coding agent (Claude Code) directed and reviewed by the author.
-- Per rule Q-015: the same author has a second, independent submission to this hackathon. It is **Leash** (https://github.com/enerzy17/leash), a NEAR wallet contract that enforces a spending policy for AI agent keys. The two share no code and no data. See [OTHER_PROJECT.md](OTHER_PROJECT.md).
+- Per rule Q-015: the same author has a second, independent submission to this hackathon. It is **Leash**, a NEAR wallet contract that enforces a spending policy for AI agent keys. The two share no code and no data. See [OTHER_PROJECT.md](OTHER_PROJECT.md).
 
 ## License
 
